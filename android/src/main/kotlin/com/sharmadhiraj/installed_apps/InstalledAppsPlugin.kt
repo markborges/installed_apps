@@ -55,15 +55,15 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         }
         when (call.method) {
             "getInstalledApps" -> {
-                val includeSystemApps = call.argument<Boolean>("exclude_system_apps") ?: true
-                val includeSystemApps = call.argument("exclude_unlaunchable") ?: true
+                val excludeSystemApps = call.argument<Boolean>("exclude_system_apps") ?: true
+                val withLaunchIntentOnly = call.argument("with_launch_intent_only") ?: true
                 val withIcon = call.argument<Boolean>("with_icon") ?: false
                 val packageNamePrefix = call.argument<String>("package_name_prefix") ?: ""
                 val platformTypeName = call.argument<String>("platform_type") ?: ""
 
                 Thread {
                     val apps: List<Map<String, Any?>> =
-                        getInstalledApps(includeSystemApps, withIcon, packageNamePrefix, PlatformType.fromString(platformTypeName))
+                        getInstalledApps(excludeSystemApps, withLaunchIntentOnly, withIcon, packageNamePrefix, PlatformType.fromString(platformTypeName))
                     result.success(apps)
                 }.start()
             }
@@ -112,7 +112,7 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
 
     private fun getInstalledApps(
         excludeSystemApps: Boolean,
-        excludeUnlaunchable: Boolean,
+        withLaunchIntentOnly: Boolean,
         withIcon: Boolean,
         packageNamePrefix: String,
         platformType: PlatformType?
@@ -122,8 +122,8 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         if (excludeSystemApps)
             installedApps =
                 installedApps.filter { app -> !isSystemApp(packageManager, app.packageName) }
-        if (excludeUnlaunchable)
-            installedApps = installedApps.filter { app -> !isLaunchable(packageManager, app.packageName) }
+        if (withLaunchIntentOnly)
+            installedApps = installedApps.filter { app -> isLaunchable(packageManager, app.packageName) }
         if (packageNamePrefix.isNotEmpty())
             installedApps = installedApps.filter { app ->
                 app.packageName.startsWith(
