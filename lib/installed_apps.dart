@@ -21,7 +21,7 @@ class IUEvent {
 /// Class that provides functionality to listen to application installation and uninstallation events
 class AppIUEvents {
   final EventChannel _eventChannel = const EventChannel(
-    'com.abian.app_install_events/app_monitor',
+    'com.sharmadhiraj.installed_apps/app_monitor',
   );
 
   final StreamController<IUEvent> _appEventController =
