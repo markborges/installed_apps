@@ -1,6 +1,7 @@
 package com.sharmadhiraj.installed_apps
 
 import MyPackageReceiver
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
@@ -8,7 +9,9 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ApplicationInfo
 import android.net.Uri
+import android.provider.Settings
 import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+import androidx.annotation.NonNull
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
 import android.widget.Toast.LENGTH_SHORT
@@ -31,11 +34,12 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
     private lateinit var channel: MethodChannel
     private lateinit var eventChannel: EventChannel
     private var context: Context? = null
+     private lateinit var activity: Activity
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        context = binding.applicationContext
         channel = MethodChannel(binding.binaryMessenger, "installed_apps")
         channel.setMethodCallHandler(this)
+        context = binding.applicationContext
 
         // LISTEN APP INSTALL AND UNINSTALL EVENTS
         val EVENT_CHANNEL = "com.sharmadhiraj.installed_apps/app_monitor"
@@ -61,13 +65,15 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
     }
 
     override fun onAttachedToActivity(activityPluginBinding: ActivityPluginBinding) {
-        context = activityPluginBinding.activity
+        // context = activityPluginBinding.activity
+        activity = activityPluginBinding.activity
     }
 
     override fun onDetachedFromActivityForConfigChanges() {}
 
     override fun onReattachedToActivityForConfigChanges(activityPluginBinding: ActivityPluginBinding) {
-        context = activityPluginBinding.activity
+        // context = activityPluginBinding.activity
+        activity = activityPluginBinding.activity
     }
 
     override fun onDetachedFromActivity() {}
@@ -128,6 +134,10 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
             "isAppInstalled" -> {
                 val packageName = call.argument<String>("package_name") ?: ""
                 result.success(isAppInstalled(packageName))
+            }
+
+            "getUsage" -> {
+                getUsage(call, result)
             }
 
             else -> result.notImplemented()
@@ -232,4 +242,26 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         }
     }
 
+    fun getUsage(@NonNull call: MethodCall, @NonNull result: Result) {
+        // Firstly, permission must be given by the user must be set correctly by the user
+        handlePermissions()
+
+        // Parse parameters, i.e. start- and end-date
+        val start: Long? = call.argument("start")
+        val end: Long? = call.argument("end")
+
+        /// Query the Usage API
+        val usage = Stats.getUsageMap(context, start!!, end!!)
+
+        /// Return the result
+        result.success(usage)
+    }
+
+    fun handlePermissions() {
+        /// If stats are not available, show the permission screen to give access to them
+        if (!Stats.checkIfStatsAreAvailable(context)) {
+            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            this.activity.startActivity(intent)
+        }
+    }
 }

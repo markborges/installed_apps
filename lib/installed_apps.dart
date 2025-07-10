@@ -39,20 +39,17 @@ class AppIUEvents {
 
   /// Start listening to installation and uninstallation events
   void startListening() {
-    _eventSubscription = _eventChannel
-        .receiveBroadcastStream()
-        .map((event) {
-          final parts = event.split(':');
-          final type = parts[0] == 'AppInstalled'
-              ? IUEventType.installed
-              : IUEventType.uninstalled;
-          final packageName = parts[1];
+    _eventSubscription = _eventChannel.receiveBroadcastStream().map((event) {
+      final parts = event.split(':');
+      final type = parts[0] == 'AppInstalled'
+          ? IUEventType.installed
+          : IUEventType.uninstalled;
+      final packageName = parts[1];
 
-          return IUEvent(type: type, packageName: packageName);
-        })
-        .listen((appEvent) {
-          _appEventController.add(appEvent);
-        });
+      return IUEvent(type: type, packageName: packageName);
+    }).listen((appEvent) {
+      _appEventController.add(appEvent);
+    });
   }
 
   /// Stop listening to events
