@@ -18,10 +18,7 @@ class AppUsageAppState extends State<AppUsageApp> {
 
   void getUsageStats() async {
     try {
-      DateTime endDate = DateTime.now();
-      DateTime startDate = DateTime(endDate.year, endDate.month, endDate.day);
-      List<AppUsageInfo> infoList =
-          await AppUsage().getAppUsage(startDate, endDate);
+      List<AppUsageInfo> infoList = await AppUsage().getAppUsage();
       setState(() => _infos = infoList);
     } catch (exception) {
       print(exception);

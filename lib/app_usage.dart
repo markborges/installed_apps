@@ -44,22 +44,8 @@ class AppUsage {
 
   /// Get app usage statistics for the specified interval. Only works on Android.
   /// Returns an empty list if called on iOS.
-  Future<List<AppUsageInfo>> getAppUsage(
-    DateTime startDate,
-    DateTime endDate,
-  ) async {
+  Future<List<AppUsageInfo>> getAppUsage() async {
     if (!Platform.isAndroid) return [];
-
-    if (endDate.isBefore(startDate)) {
-      throw ArgumentError('End date must be after start date');
-    }
-
-    // Convert dates to ms since epoch
-    int end = endDate.millisecondsSinceEpoch;
-    int start = startDate.millisecondsSinceEpoch;
-
-    // Set parameters
-    Map<String, int> interval = {'start': start, 'end': end};
 
     // Get result and parse it as a Map of <String, List<double>>
     Map usage = await _methodChannel.invokeMethod('getUsage');
