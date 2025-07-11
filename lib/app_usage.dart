@@ -8,14 +8,10 @@ import 'dart:io' show Platform;
 class AppUsageInfo {
   late String _packageName, _appName;
   late Duration _usage;
-  DateTime _startDate, _endDate, _lastForeground;
 
   AppUsageInfo(
     String name,
-    double usageInSeconds,
-    this._startDate,
-    this._endDate,
-    this._lastForeground,
+    int usageInSeconds,
   ) {
     List<String> tokens = name.split('.');
     _packageName = name;
@@ -33,18 +29,8 @@ class AppUsageInfo {
   /// in the specified interval
   Duration get usage => _usage;
 
-  /// The start of the interval
-  DateTime get startDate => _startDate;
-
-  /// The end of the interval
-  DateTime get endDate => _endDate;
-
-  /// Last time app was in foreground
-  DateTime get lastForeground => _lastForeground;
-
   @override
-  String toString() =>
-      'App Usage: $packageName - $appName, duration: $usage [$startDate, $endDate]';
+  String toString() => 'App Usage: $packageName - $appName, duration: $usage';
 }
 
 /// Singleton class to get app usage statistics.
@@ -76,20 +62,15 @@ class AppUsage {
     Map<String, int> interval = {'start': start, 'end': end};
 
     // Get result and parse it as a Map of <String, List<double>>
-    Map usage = await _methodChannel.invokeMethod('getUsage', interval);
+    Map usage = await _methodChannel.invokeMethod('getUsage');
 
     // Convert to list of AppUsageInfo
     List<AppUsageInfo> result = [];
     for (String key in usage.keys) {
-      List<double> temp = List<double>.from(usage[key]);
-      if (temp[0] > 0) {
-        result.add(AppUsageInfo(
-            key,
-            temp[0],
-            DateTime.fromMillisecondsSinceEpoch(temp[1].round() * 1000),
-            DateTime.fromMillisecondsSinceEpoch(temp[2].round() * 1000),
-            DateTime.fromMillisecondsSinceEpoch(temp[3].round() * 1000)));
-      }
+      result.add(AppUsageInfo(
+        key,
+        usage[key],
+      ));
     }
 
     return result;

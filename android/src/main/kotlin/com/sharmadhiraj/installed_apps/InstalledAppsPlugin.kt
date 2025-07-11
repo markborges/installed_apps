@@ -28,6 +28,11 @@ import io.flutter.plugin.common.MethodChannel.Result
 import java.util.Locale.ENGLISH
 import android.content.BroadcastReceiver
 import io.flutter.plugin.common.EventChannel
+import android.app.usage.UsageStats
+import android.app.usage.UsageStatsManager
+import android.app.usage.UsageEvents
+import android.util.Log
+import java.util.Calendar
 
 
 class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
@@ -137,7 +142,7 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
             }
 
             "getUsage" -> {
-                getUsage(call, result)
+                getTodaysUsage(result)
             }
 
             else -> result.notImplemented()
@@ -242,19 +247,108 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         }
     }
 
-    fun getUsage(@NonNull call: MethodCall, @NonNull result: Result) {
+    // fun getUsage(@NonNull call: MethodCall, @NonNull result: Result) {
+    //     // Firstly, permission must be given by the user must be set correctly by the user
+    //     handlePermissions()
+
+    //     // Parse parameters, i.e. start- and end-date
+    //     val start: Long? = call.argument("start")
+    //     val end: Long? = call.argument("end")
+
+    //     /// Query the Usage API
+    //     val usage = Stats.getUsageMap(context, start!!, end!!)
+
+    //     /// Return the result
+
+    //     result.success(usage)
+    // }
+
+    fun getTodaysUsage(@NonNull result: Result) {
         // Firstly, permission must be given by the user must be set correctly by the user
         handlePermissions()
 
-        // Parse parameters, i.e. start- and end-date
-        val start: Long? = call.argument("start")
-        val end: Long? = call.argument("end")
-
-        /// Query the Usage API
-        val usage = Stats.getUsageMap(context, start!!, end!!)
+        //Get Today's Usage
+        val totalScreenTime = getTotalScreenTime(result)
 
         /// Return the result
-        result.success(usage)
+        result.success(totalScreenTime)
+    }
+
+    //Original Source Code for the function below: https://stackoverflow.com/a/79386906
+    //Adjusted according needs
+    @SuppressWarnings("ResourceType")
+    private fun getTotalScreenTime(@NonNull result: Result): MutableMap<String, Long> {
+        val usageStatsManager = context!!.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+
+        val calendar: Calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfDay = calendar.timeInMillis
+
+        val calendarEnd = Calendar.getInstance()
+        calendarEnd.set(Calendar.HOUR_OF_DAY, 23)
+        calendarEnd.set(Calendar.MINUTE, 59)
+        calendarEnd.set(Calendar.SECOND, 59)
+        calendarEnd.set(Calendar.MILLISECOND, 999)
+        val endOfDay = calendarEnd.timeInMillis
+
+        val eventList = usageStatsManager.queryEvents(startOfDay, endOfDay)
+        val stateMap = mutableMapOf<String, AppStateModel>()
+
+        while (eventList.hasNextEvent()) {
+            val event = UsageEvents.Event()
+            eventList.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                val packageCheck = stateMap[event.packageName]
+                if (packageCheck != null) {
+                    if (stateMap[event.packageName]!!.classMap[event.className] != null) {
+                        stateMap[event.packageName]!!.className = event.className
+                        stateMap[event.packageName]!!.startTime = event.timeStamp
+                        stateMap[event.packageName]!!.classMap[event.className]!!.startTime = event.timeStamp
+                        stateMap[event.packageName]!!.classMap[event.className]!!.isResume = true
+                    } else {
+                        stateMap[event.packageName]!!.className = event.className
+                        stateMap[event.packageName]!!.startTime = event.timeStamp
+                        stateMap[event.packageName]!!.classMap[event.className] = BoolObj(event.timeStamp, true)
+                    }
+                } else {
+                    val appStates = AppStateModel(packageName = event.packageName, className = event.className, startTime = event.timeStamp)
+                    appStates.classMap[event.className] = BoolObj(event.timeStamp, true)
+                    stateMap[event.packageName] = appStates
+                }
+            } else if (event.eventType == UsageEvents.Event.ACTIVITY_STOPPED) {
+                val packageCheck = stateMap[event.packageName]
+                if (packageCheck != null) {
+                    if (stateMap[event.packageName]!!.classMap[event.className] != null) {
+                        stateMap[event.packageName]!!.totalTime += event.timeStamp - stateMap[event.packageName]!!.classMap[event.className]!!.startTime
+                        stateMap[event.packageName]!!.classMap[event.className]!!.isResume = false
+                    }
+                }
+            }
+        }
+
+        // Filter out packages with "launcher" in the name
+        val filteredStateList = stateMap.values.filter { !it.packageName.contains("launcher", ignoreCase = true) }
+
+        // Sort the stateMap by totalTime in descending order
+        val sortedStateList = filteredStateList.sortedByDescending { it.totalTime }
+
+        val returnList = mutableMapOf<String, Long>()
+
+        // Log the foreground time per package
+        sortedStateList.forEach { appState ->
+            Log.d("AppUsagePlugin", "Package: ${appState.packageName}, Total Time in Foreground: ${appState.totalTime / 60000} min")
+            returnList[appState.packageName] = appState.totalTime / 1000
+        }
+
+        // Calculate the total time
+        val totalTime = sortedStateList.sumOf { it.totalTime }
+
+        Log.d("AppUsagePlugin", "Total screen time for today: ${totalTime / 1000 / 60} minutes")
+        // result.success(totalTime / 1000) // Return total time in seconds
+        return returnList
     }
 
     fun handlePermissions() {
@@ -265,3 +359,16 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         }
     }
 }
+
+data class BoolObj(
+    var startTime: Long = 0L,
+    var isResume: Boolean = false
+)
+
+data class AppStateModel(
+    var packageName: String,
+    var className: String,
+    var startTime: Long = 0L,
+    var totalTime: Long = 0L,
+    val classMap: MutableMap<String, BoolObj> = mutableMapOf()
+)
