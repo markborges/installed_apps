@@ -20,11 +20,11 @@ class AppUsageAppState extends State<AppUsageApp> {
   void getUsageStats() async {
     try {
       // List<AppUsageInfo> infoList = await AppUsage().getAppUsageAsList();
-      Map<String, int> infoList = await AppUsage().getAppUsageAsMap();
+      Map<String, AppUsageInfo> infoList = await AppUsage().getAppUsageAsMap();
 
       List<AppUsageInfo> usage = [];
       for (var key in infoList.keys) {
-        usage.add(AppUsageInfo(key, infoList[key]!));
+        usage.add(infoList[key]!);
       }
       setState(() => _infos = usage);
     } catch (exception) {
