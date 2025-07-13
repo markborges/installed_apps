@@ -44,7 +44,7 @@ class AppUsage {
 
   /// Get app usage statistics for the specified interval. Only works on Android.
   /// Returns an empty list if called on iOS.
-  Future<List<AppUsageInfo>> getAppUsage() async {
+  Future<List<AppUsageInfo>> getAppUsageAsList() async {
     if (!Platform.isAndroid) return [];
 
     // Get result and parse it as a Map of <String, List<double>>
@@ -60,5 +60,16 @@ class AppUsage {
     }
 
     return result;
+  }
+
+  /// Get app usage statistics for the specified interval. Only works on Android.
+  /// Returns an empty list if called on iOS.
+  Future<Map<String, int>> getAppUsageAsMap() async {
+    if (!Platform.isAndroid) return {};
+
+    // Get result and parse it as a Map of <String, List<double>>
+    Map usage = await _methodChannel.invokeMethod('getUsage');
+
+    return usage.map<String, int>((key, value) => MapEntry(key, value));
   }
 }

@@ -11,6 +11,7 @@ import android.content.pm.ApplicationInfo
 import android.net.Uri
 import android.provider.Settings
 import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+import android.provider.Settings.ACTION_APP_USAGE_SETTINGS
 import androidx.annotation.NonNull
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
@@ -106,6 +107,11 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
             "startApp" -> {
                 val packageName = call.argument<String>("package_name")
                 result.success(startApp(packageName))
+            }
+
+            "openAppUsage" -> {
+                val packageName = call.argument<String>("package_name")
+                openAppUsage(packageName)
             }
 
             "openSettings" -> {
@@ -211,6 +217,19 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
             flags = FLAG_ACTIVITY_NEW_TASK
             action = ACTION_APPLICATION_DETAILS_SETTINGS
             data = Uri.fromParts("package", packageName, null)
+        }
+        context!!.startActivity(intent)
+    }
+
+    private fun openAppUsage(packageName: String?) {
+        if (!isAppInstalled(packageName)) {
+            print("App $packageName is not installed on this device.")
+            return;
+        }
+        val intent = Intent(ACTION_APP_USAGE_SETTINGS).apply {
+            putExtra(Intent.EXTRA_PACKAGE_NAME, packageName)
+        }.apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context!!.startActivity(intent)
     }

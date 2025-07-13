@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:installed_apps/app_usage.dart';
+import 'package:installed_apps/installed_apps.dart';
 
 void main() => runApp(AppUsageApp());
 
@@ -18,8 +19,14 @@ class AppUsageAppState extends State<AppUsageApp> {
 
   void getUsageStats() async {
     try {
-      List<AppUsageInfo> infoList = await AppUsage().getAppUsage();
-      setState(() => _infos = infoList);
+      // List<AppUsageInfo> infoList = await AppUsage().getAppUsageAsList();
+      Map<String, int> infoList = await AppUsage().getAppUsageAsMap();
+
+      List<AppUsageInfo> usage = [];
+      for (var key in infoList.keys) {
+        usage.add(AppUsageInfo(key, infoList[key]!));
+      }
+      setState(() => _infos = usage);
     } catch (exception) {
       print(exception);
     }
@@ -37,6 +44,9 @@ class AppUsageAppState extends State<AppUsageApp> {
             itemCount: _infos.length,
             itemBuilder: (context, index) {
               return ListTile(
+                  onTap: () {
+                    InstalledApps.openAppUsage(_infos[index].packageName);
+                  },
                   title: Text(_infos[index].appName),
                   trailing: Text(_infos[index].usage.toString()));
             }),

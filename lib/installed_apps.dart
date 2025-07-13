@@ -98,6 +98,13 @@ class InstalledApps {
     return _channel.invokeMethod("startApp", {"package_name": packageName});
   }
 
+  /// Opens the App Usage screen of an app with the specified package name.
+  ///
+  /// [packageName] is the package name of the app whose settings screen should be opened.
+  static openAppUsage(String packageName) {
+    _channel.invokeMethod("openAppUsage", {"package_name": packageName});
+  }
+
   /// Opens the settings screen (App Info) of an app with the specified package name.
   ///
   /// [packageName] is the package name of the app whose settings screen should be opened.
